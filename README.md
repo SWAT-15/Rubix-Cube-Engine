@@ -1,164 +1,237 @@
-# 🧩 Rubik's Cube Solver
+# Rubik's Cube Solver Engine
 
-A **Java + OpenCV** based **3×3×3 Rubik's Cube Solver** that scans a physical cube using a webcam, reconstructs its state, and generates an optimized solution automatically.
+A Java and OpenCV based 3x3x3 Rubik's Cube solver that scans a physical cube using a webcam,
+reconstructs its state through computer vision, and computes an optimized solution automatically.
 
-The project combines **Computer Vision**, **Algorithm Design**, and **Object-Oriented Programming** to solve a scrambled Rubik's Cube with an average solution length of **approximately 25 moves**.
-
----
-
-# Features
-
-* Webcam-based cube scanning
-* Automatic sticker color detection using OpenCV
-* Cube state reconstruction
-* Cube validity verification
-* Optimized solving algorithm
-* Average solution length of approximately **25 moves**
-* Standard Rubik's Cube notation output
-* Cross-platform support (Windows, Linux, macOS)
-* Java Swing graphical interface
+For a comprehensive technical explanation of the architecture, algorithms, and design decisions,
+see [Intro.md](Intro.md).
 
 ---
 
-# Project Overview
+## Table of Contents
 
-The application performs the following steps:
-
-1. Capture images of all six cube faces.
-2. Detect sticker colors using OpenCV.
-3. Reconstruct the cube state.
-4. Validate the cube configuration.
-5. Compute an optimized solving sequence.
-6. Display the solution using standard Rubik's Cube notation.
-
----
-
-# System Requirements
-
-* Windows, Linux, or macOS
-* Java 8 or later
-* OpenCV 3.x or later
-* Webcam
-* IDE (Eclipse, IntelliJ IDEA, or VS Code)
+- [Features](#features)
+- [System Requirements](#system-requirements)
+- [Installation](#installation)
+- [Project Structure](#project-structure)
+- [Usage](#usage)
+- [Cube Notation](#cube-notation)
+- [Example Output](#example-output)
+- [Performance](#performance)
+- [Future Improvements](#future-improvements)
+- [Author](#author)
+- [License](#license)
 
 ---
 
-# Installing OpenCV
+## Features
 
-## Windows
-
-1. Download OpenCV from:
-
-```
-https://opencv.org/releases/
-```
-
-2. Extract the downloaded archive.
-
-3. Locate the Java library:
-
-```
-opencv/build/java/
-```
-
-4. Add
-
-```
-opencv-xxx.jar
-```
-
-to your project's libraries.
-
-5. Configure the native library path according to your operating system.
+- Webcam-based cube scanning with real-time contour overlay
+- Automatic sticker color detection using OpenCV
+- Perceptually accurate color classification via CIE L\*a\*b\* and CIEDE2000
+- Four-stage lookup-table-based solving algorithm
+- Average solution length of approximately 25 moves
+- Move optimization (combining, canceling, and reordering)
+- Orientation-independent scanning (any cube orientation is accepted)
+- Standard Rubik's Cube notation output
+- Java Swing graphical interface
+- Cross-platform support (Windows, Linux, macOS)
 
 ---
 
-## Linux
+## System Requirements
 
-Download OpenCV and build it:
+- Java 8 or later
+- OpenCV 3.x or 4.x with Java bindings
+- A webcam
+- An IDE such as Eclipse, IntelliJ IDEA, or VS Code (recommended for build path configuration)
+
+---
+
+## Installation
+
+### 1. Clone the Repository
 
 ```bash
-mkdir build
-cd build
-cmake ..
-make
+git clone https://github.com/SWAT-15/Rubix-Cube-Engine.git
+cd Rubix-Cube-Engine
 ```
 
-After compilation, configure your IDE to use the generated Java libraries.
+### 2. Install OpenCV
 
----
+#### Windows
 
-## macOS
+1. Download OpenCV from https://opencv.org/releases/.
+2. Extract the archive.
+3. Locate the Java library at `opencv/build/java/`.
+4. Note the path to the native library directory (e.g., `opencv/build/java/x64/`).
 
-Install OpenCV using Homebrew:
+#### Linux
+
+```bash
+git clone https://github.com/opencv/opencv.git
+cd opencv
+mkdir build && cd build
+cmake ..
+make -j$(nproc)
+```
+
+After compilation, locate the generated `opencv-xxx.jar` and the native `.so` library.
+
+#### macOS
 
 ```bash
 brew install opencv
 ```
 
-or build it from source if preferred.
+Alternatively, build from source following the Linux instructions.
+
+### 3. Configure the IDE
+
+1. Add `opencv-xxx.jar` to the project build path as an external library.
+2. Set the native library location to the directory containing the platform-specific OpenCV
+   binaries:
+   - Windows: `opencv/build/java/x64/`
+   - Linux: the directory containing `libopencv_java*.so`
+   - macOS: the directory containing `libopencv_java*.dylib`
+3. Ensure the source folder is set to `src/`.
+
+### 4. Verify Data Files
+
+The following pre-computed lookup tables must be present in the project root directory:
+
+| File              | Required |
+|-------------------|----------|
+| `stage0.txt`      | Yes      |
+| `stage1.txt`      | Yes      |
+| `stage2.txt`      | Yes      |
+| `stage3.txt`      | Yes      |
+| `testMoves.txt`   | Yes      |
+
+These files are included in the repository. If any are missing, the solver will fail to
+initialize.
 
 ---
 
-# Clone the Repository
-
-```bash
-git clone https://github.com/SWAT-15/Rubix-Cube-Engine.git
-
-cd Rubix-Cube-Engine
-```
-
-Import the project into your preferred Java IDE and add the OpenCV library to the project's build path.
-
----
-
-# Running the Application
-
-Run
+## Project Structure
 
 ```
-MainFrame.java
-```
-
-A webcam window will appear.
-
-For the best detection accuracy:
-
-* Use consistent lighting.
-* Avoid reflections.
-* Keep the cube centered.
-* Hold the cube steady while capturing each face.
-
----
-
-# Cube Scanning Order
-
-Capture the six faces in the following order:
-
-```
-TOP
-LEFT
-FRONT
-RIGHT
-BACK
-BOTTOM
+Rubix-Cube-Engine/
+|
+|-- src/
+|   |-- MainFrame.java          Entry point. Swing GUI and keyboard event handling.
+|   |-- VideoCap.java           Webcam capture wrapper using OpenCV VideoCapture.
+|   |-- Mat2Image.java          Converts OpenCV Mat to Java BufferedImage.
+|   |-- AnalyzeFrame.java       Computer vision pipeline: contour detection, color
+|   |                           extraction, L*a*b* conversion, CIEDE2000, clustering.
+|   |-- SolveCube.java          Four-stage solver with lookup tables and optimization.
+|   |-- TableGenerator.java     Cube data model, 18 face-turn operations, hashing,
+|   |                           IDDFS table generation, and pruning.
+|   |-- DisplayWindow.java      Secondary Swing window showing cube state and solution.
+|   |-- SortColors.java         Spatial ordering of detected sticker colors.
+|   |-- ColorAndIndex.java      Data class for color classification results.
+|   |-- Imshow.java             OpenCV imshow utility for Java.
+|   |-- TestEnvironment.java    Offline test harness for color detection debugging.
+|
+|-- stage0.txt                   Lookup table for solving stage 0 (253,440 entries).
+|-- stage1.txt                   Lookup table for solving stage 1 (84,672 entries).
+|-- stage2.txt                   Lookup table for solving stage 2 (1,555,200 entries).
+|-- stage3.txt                   Lookup table for solving stage 3 (1,296 entries).
+|-- testMoves.txt                Pre-scramble sequences for solution optimization.
+|-- Intro.md                     Detailed technical introduction.
+|-- README.md                    This file.
+|-- .classpath                   Eclipse classpath configuration.
+|-- .project                     Eclipse project configuration.
+|-- .gitignore                   Git ignore rules.
 ```
 
 ---
 
-# Controls
+## Usage
 
-| Key   | Action               |
-| ----- | -------------------- |
-| SPACE | Capture current face |
-| X     | Exit application     |
+### Running the Application
+
+Run `MainFrame.java` as a Java application. Two windows will appear:
+
+1. **Webcam Window** -- Shows the live camera feed with white rectangle overlays around detected
+   sticker contours.
+2. **Cube Display Window** -- Shows a grid of 54 colored buttons representing the cube state,
+   along with status messages and the solution.
+
+### Controls
+
+| Key   | Action                         |
+|-------|--------------------------------|
+| SPACE | Capture the current face       |
+| R     | Reset all progress             |
+| X     | Exit the application           |
+
+### Scanning Procedure
+
+1. Hold the cube in front of the webcam so that one face is clearly visible.
+2. Ensure all 9 stickers are detected (indicated by white rectangle overlays).
+3. Press SPACE to capture.
+4. Rotate the cube and repeat for all six faces.
+
+**Capture the faces in this order:**
+
+```
+1. Top
+2. Left
+3. Front
+4. Right
+5. Back
+6. Bottom
+```
+
+After the sixth face is captured, the solver runs automatically and displays the solution.
+
+### Tips for Accurate Detection
+
+- Use consistent, diffused lighting. Avoid direct spotlights.
+- Minimize reflections on the cube surface.
+- Keep the cube centered in the camera frame.
+- Hold the cube steady during each capture.
+- Ensure no other square-shaped objects are visible in the frame.
+- If detection fails (status message turns red), retake the same face.
 
 ---
 
-# Example Output
+## Cube Notation
+
+The solution uses standard Rubik's Cube notation:
+
+| Symbol | Meaning                               |
+|--------|---------------------------------------|
+| R      | Right face, 90 degrees clockwise      |
+| R'     | Right face, 90 degrees counter-clockwise |
+| R2     | Right face, 180 degrees               |
+| L      | Left face, 90 degrees clockwise       |
+| L'     | Left face, 90 degrees counter-clockwise |
+| L2     | Left face, 180 degrees                |
+| U      | Upper face, 90 degrees clockwise      |
+| U'     | Upper face, 90 degrees counter-clockwise |
+| U2     | Upper face, 180 degrees               |
+| D      | Down face, 90 degrees clockwise       |
+| D'     | Down face, 90 degrees counter-clockwise |
+| D2     | Down face, 180 degrees                |
+| F      | Front face, 90 degrees clockwise      |
+| F'     | Front face, 90 degrees counter-clockwise |
+| F2     | Front face, 180 degrees               |
+| B      | Back face, 90 degrees clockwise       |
+| B'     | Back face, 90 degrees counter-clockwise |
+| B2     | Back face, 180 degrees                |
+
+Clockwise is defined as seen when looking directly at the face.
+
+For a visual guide, see: https://ruwix.com/the-rubiks-cube/notation/
+
+---
+
+## Example Output
 
 ```
-your cube:
+Your cube:
 
       OYG
       WYO
@@ -182,7 +255,7 @@ Calculating...
       YYY
       YYY
 
-Solution
+Solution:
 
 R2 U' R B2 U' R2 U' B R2 U' L U
 R2 U' D L D B D B' D' L2 F2 L
@@ -191,144 +264,52 @@ F2 R' D2 R
 Number of Moves: 28
 ```
 
----
-
-# Understanding the Output
-
-The printed cube represents the scanned cube state.
-
-```
-      OYG
-      WYO
-      YWG
-  YBB RRR WWW OOB
-  GBR BRB YGR YOR
-  RBW BGO BOY OGG
-      RWW
-      OWG
-      YYG
-```
-
-The faces correspond to:
-
-* Top
-* Left
-* Front
-* Right
-* Back
-* Bottom
-
-Before executing the generated solution, make sure you are holding the cube in the same orientation shown above.
+The first block shows the scanned cube state. The second block confirms the solved state. The
+solution is given in standard notation. Before executing the moves, hold the cube in the same
+orientation as shown in the output (White on top, Green in front).
 
 ---
 
-# Cube Notation
+## Performance
 
-The generated solution follows the standard Rubik's Cube notation.
+| Metric                        | Value              |
+|-------------------------------|--------------------|
+| Average Solution Length       | ~25 moves          |
+| Maximum Solution Length       | <28 moves          |
+| Solver Time Limit             | 5 seconds          |
+| Lookup Table Size (on disk)   | ~86 MB             |
+| Language                      | Java               |
+| Computer Vision Library       | OpenCV             |
 
-| Move | Meaning                      |
-| ---- | ---------------------------- |
-| R    | Right face clockwise         |
-| R'   | Right face counter-clockwise |
-| R2   | Right face 180°              |
-| L    | Left face clockwise          |
-| U    | Upper face clockwise         |
-| D    | Bottom face clockwise        |
-| F    | Front face clockwise         |
-| B    | Back face clockwise          |
 
-Example:
 
-```
-R U R' U' F2 D2
-```
 
-If you are new to Rubik's Cube notation, you can learn it here:
+## Future Improvements
 
-https://ruwix.com/the-rubiks-cube/notation/
-
----
-
-# Project Structure
-
-```
-Rubix-Cube-Engine
-│
-├── src
-│   ├── cube
-│   ├── gui
-│   ├── imageprocessing
-│   ├── solver
-│   ├── util
-│   └── MainFrame.java
-│
-├── README.md
-└── LICENSE
-```
+- Improved color calibration with adaptive lighting compensation
+- Package structure and build system (Maven or Gradle)
+- Unit tests with a proper testing framework
+- Configurable file paths for lookup tables
+- Faster image processing pipeline
+- Real-time cube tracking across frames
+- 3D cube visualization
+- Solution playback animation
+- JavaFX-based modern interface
+- Mobile application support
 
 ---
 
-# Performance
-
-| Metric                  |                 Value |
-| ----------------------- | --------------------: |
-| Average Solution Length |             ~25 Moves |
-| Maximum Solution Length |             <28 Moves |
-| Language                |                  Java |
-| Computer Vision         |                OpenCV |
-| Platform                | Windows, Linux, macOS |
-
----
-
-# Future Improvements
-
-* Improved color calibration
-* Automatic lighting compensation
-* Faster image processing
-* Real-time cube tracking
-* 3D cube visualization
-* Solution playback animation
-* JavaFX interface
-* Mobile application support
-
----
-
-# Skills Demonstrated
-
-* Computer Vision
-* OpenCV
-* Java Development
-* Object-Oriented Programming
-* Algorithm Design
-* Search Algorithms
-* Software Engineering
-* GUI Development
-
----
-
-# Repository
-
-```
-https://github.com/SWAT-15/Rubix-Cube-Engine
-```
-
----
-
-# Author
+## Author
 
 **Swatantra Pratap Singh**
 
-B.Tech — Computer Science & Engineering
+B.Tech -- Computer Science and Engineering
 National Institute of Technology Raipur
 
 GitHub: https://github.com/SWAT-15
 
 ---
 
-# License
+## License
 
 This project is licensed under the MIT License.
-
----
-
-If you found this project useful, consider giving the repository a ⭐ on GitHub.
